@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if the user is signed in
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if the user is accessing their own document
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if isSignedIn(); // Users can read other profiles (for finding sitters)
+      allow write: if isOwner(userId); // Users can only edit their own profile
+    }
+
+    // Bookings Collection
+    match /bookings/{bookingId} {
+      allow read: if isSignedIn() && (
+        resource.data.parentId == request.auth.uid || 
+        resource.data.sitterId == request.auth.uid
+      );
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (
+        resource.data.parentId == request.auth.uid || 
+        resource.data.sitterId == request.auth.uid
+      );
+    }
+  }
+}
