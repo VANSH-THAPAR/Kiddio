@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/features/auth/presentation/login_screen.dart';
-import 'package:frontend/core/presentation/scaffold_with_navbar.dart';
+import 'package:frontend/features/navigation/main_scaffold.dart';
 import 'package:frontend/features/auth/providers/auth_controller.dart';
 import '../features/dashboard/presentation/dashboard_screen.dart';
 
@@ -61,15 +61,14 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/',
-    refreshListenable: authNotifier,
+    refreshListenable: authNotifier, // This triggers a refresh on auth change
     redirect: (context, state) {
-      // READ the current state from the NOTIFIER directly for consistency/debug or ref.read
-      // Using ref.read(authControllerProvider) inside redirect is safe in GoRouter 8+ 
-      // but let's be explicit:
+      // READ the current state from the provider directly
       final currentAuth = ref.read(authControllerProvider);
       final isLoggedIn = currentAuth.user != null;
       final isLoggingIn = state.uri.toString() == '/auth';
 
+      // Log router state transitions for debugging
       // debugPrint("Router Redirect: LoggedIn=$isLoggedIn, Path=${state.uri}, User=${currentAuth.user?.email}");
 
       if (!isLoggedIn) {
@@ -89,7 +88,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
-          return ScaffoldWithNavBar(navigationShell: navigationShell);
+          return MainScaffold(navigationShell: navigationShell);
         },
         branches: [
           StatefulShellBranch(

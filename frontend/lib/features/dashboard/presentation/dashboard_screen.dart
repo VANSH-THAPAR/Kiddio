@@ -3,12 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../core/theme.dart';
+import '../../auth/models/user_model.dart';
+import '../providers/sitter_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final sittersAsyncValue = ref.watch(sittersProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -26,21 +30,30 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: _mockSitters.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 16),
-        itemBuilder: (context, index) {
-          final sitter = _mockSitters[index];
-          return SitterCard(sitter: sitter);
+      body: sittersAsyncValue.when(
+        data: (sitters) {
+          if (sitters.isEmpty) {
+            return const Center(child: Text("No sitters found yet."));
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: sitters.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 16),
+            itemBuilder: (context, index) {
+              final sitter = sitters[index];
+              return SitterCard(sitter: sitter);
+            },
+          );
         },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(child: Text('Error: $error')),
       ),
     );
   }
 }
 
 class SitterCard extends StatelessWidget {
-  final Map<String, dynamic> sitter;
+  final UserModel sitter;
 
   const SitterCard({super.key, required this.sitter});
 
@@ -67,7 +80,9 @@ class SitterCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Image.network(
-                sitter['image'],
+                sitter.profileImage.isNotEmpty 
+                    ? sitter.profileImage 
+                    : 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(sitter.name)}&background=random',
                 width: 80,
                 height: 80,
                 fit: BoxFit.cover,
@@ -90,62 +105,67 @@ class SitterCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        sitter['name'],
+                        sitter.name,
                         style: GoogleFonts.poppins(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Iconsax.star1, size: 14, color: Colors.amber[700]),
-                            const SizedBox(width: 4),
-                            Text(
-                              "${sitter['rating']}",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
+                      if (sitter.rating != null && sitter.rating! > 0)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Iconsax.star1, size: 14, color: Colors.amber[700]),
+                              const SizedBox(width: 4),
+                              Text(
+                                "${sitter.rating!.toStringAsFixed(1)}",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    sitter['bio'],
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
+                  if (sitter.bio != null) // Only show bio if available
+                    Text(
+                      sitter.bio!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 12,
+                      ),
                     ),
-                  ),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        "\$${sitter['rate']}/hr",
+                        sitter.hourlyRate != null 
+                            ? "\$${sitter.hourlyRate!.toStringAsFixed(0)}/hr"
+                            : "Rate Negotiable",
                         style: GoogleFonts.poppins(
                           fontWeight: FontWeight.w600,
                           color: AppTheme.primaryColor,
                         ),
                       ),
-                      Text(
-                        "${sitter['reviews']} reviews",
-                        style: TextStyle(
-                          color: Colors.grey[500],
-                          fontSize: 12,
+                      if (sitter.reviewCount != null && sitter.reviewCount! > 0)
+                        Text(
+                          "${sitter.reviewCount} reviews",
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 12,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ],
@@ -158,46 +178,5 @@ class SitterCard extends StatelessWidget {
   }
 }
 
-// Mock Data
-final List<Map<String, dynamic>> _mockSitters = [
-  {
-    'name': 'Sarah Jenkins',
-    'image': 'https://i.pravatar.cc/150?u=sarah',
-    'rating': 4.9,
-    'reviews': 124,
-    'rate': 18,
-    'bio': 'Certified babysitter with 5 years of experience. I love engaging kids with creative activities and outdoor play.',
-  },
-  {
-    'name': 'Michael Chen',
-    'image': 'https://i.pravatar.cc/150?u=michael',
-    'rating': 4.8,
-    'reviews': 89,
-    'rate': 22,
-    'bio': 'University student majoring in Early Childhood Education. Patient, reliable, and fun!',
-  },
-  {
-    'name': 'Jessica Alverez',
-    'image': 'https://i.pravatar.cc/150?u=jessica',
-    'rating': 5.0,
-    'reviews': 42,
-    'rate': 25,
-    'bio': 'Special needs certified. Experienced with toddlers and infants. CPR and First Aid trained.',
-  },
-  {
-    'name': 'Emily Wilson',
-    'image': 'https://i.pravatar.cc/150?u=emily',
-    'rating': 4.7,
-    'reviews': 215,
-    'rate': 16,
-    'bio': 'High energy and creative! I bring my own art supplies and games. Available for weekends and date nights.',
-  },
-  {
-    'name': 'David Ross',
-    'image': 'https://i.pravatar.cc/150?u=david',
-    'rating': 4.9,
-    'reviews': 67,
-    'rate': 20,
-    'bio': 'Sports enthusiast and math tutor. I can help with homework and get the kids moving outside.',
-  },
-];
+
+// removed mock data
