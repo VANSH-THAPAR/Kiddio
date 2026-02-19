@@ -1,17 +1,13 @@
+import 'package:google_fonts/google_fonts.dart'; // import dependencies correctly
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/features/auth/presentation/login_screen.dart';
 import 'package:frontend/core/presentation/scaffold_with_navbar.dart';
 import 'package:frontend/features/auth/providers/auth_controller.dart';
+import '../features/dashboard/presentation/dashboard_screen.dart';
 
 // Placeholder screens for Shell
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
-  @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text("Dashboard")), body: const Center(child: Text("Dashboard Content")));
-}
-
 class BookingsScreen extends StatelessWidget {
   const BookingsScreen({super.key});
   @override
@@ -46,17 +42,43 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authControllerProvider);
+  // Use a listenable to refresh the router on auth state changes
+  final authNotifier = ValueNotifier<AuthState>(const AuthState());
+  
+  ref.onDispose(() {
+    authNotifier.dispose();
+  });
+
+  ref.listen<AuthState>(
+    authControllerProvider,
+    (_, next) {
+      authNotifier.value = next;
+    },
+  );
+
+  final authState = ref.read(authControllerProvider); // Initial state
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/',
+    refreshListenable: authNotifier,
     redirect: (context, state) {
-      final isLoggedIn = authState.user != null;
+      // READ the current state from the NOTIFIER directly for consistency/debug or ref.read
+      // Using ref.read(authControllerProvider) inside redirect is safe in GoRouter 8+ 
+      // but let's be explicit:
+      final currentAuth = ref.read(authControllerProvider);
+      final isLoggedIn = currentAuth.user != null;
       final isLoggingIn = state.uri.toString() == '/auth';
 
-      if (!isLoggedIn && !isLoggingIn) return '/auth';
-      if (isLoggedIn && isLoggingIn) return '/';
+      // debugPrint("Router Redirect: LoggedIn=$isLoggedIn, Path=${state.uri}, User=${currentAuth.user?.email}");
+
+      if (!isLoggedIn) {
+        return isLoggingIn ? null : '/auth';
+      }
+
+      if (isLoggingIn) {
+        return '/';
+      }
 
       return null;
     },
@@ -74,7 +96,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/',
-                builder: (context, state) => const HomeScreen(),
+                builder: (context, state) => const DashboardScreen(),
               ),
             ],
           ),

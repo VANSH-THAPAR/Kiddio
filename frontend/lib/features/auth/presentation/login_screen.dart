@@ -33,25 +33,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   void _submit() async {
     if (_formKey.currentState!.validate()) {
-      final auth = ref.read(authControllerProvider.notifier);
+      final authNotifier = ref.read(authControllerProvider.notifier);
       
       if (_isLogin) {
-        await auth.login(
+        // Login logic
+        await authNotifier.login(
           _emailController.text.trim(), 
-          _passwordController.text.trim()
+          _passwordController.text.trim(),
         );
       } else {
-        await auth.signup(
+        // Signup logic
+        await authNotifier.signup(
           _nameController.text.trim(),
-          _emailController.text.trim(), 
+          _emailController.text.trim(),
           _passwordController.text.trim(),
           _selectedRole,
         );
       }
-
-      // Check if successful
-      if (mounted && ref.read(authControllerProvider).user != null) {
-        context.go('/'); // Navigate to Dashboard
+      
+      // Force navigation to dashboard after successful login
+      if (mounted) {
+         final currentState = ref.read(authControllerProvider);
+         if (currentState.user != null) {
+           context.go('/');
+         } else if (currentState.error == null) {
+           // If user is null but no error, re-fetch or wait (should stick to loading)
+           // But since loading is false...
+           ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Login successful, but profile syncing..."))
+           );
+         }
       }
     }
   }

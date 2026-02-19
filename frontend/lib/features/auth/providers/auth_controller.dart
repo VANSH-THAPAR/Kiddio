@@ -13,10 +13,13 @@ class AuthState {
   const AuthState({this.isLoading = false, this.user, this.error});
 
   AuthState copyWith({bool? isLoading, UserModel? user, String? error}) {
+    // If setting new user (non-null), clear error. If user is null, keep/set error.
+    final newError = (user != null) ? null : (error ?? this.error);
+    
     return AuthState(
       isLoading: isLoading ?? this.isLoading,
       user: user ?? this.user,
-      error: error,
+      error: error, // Allow explicit error set
     );
   }
 }
@@ -32,9 +35,11 @@ class AuthController extends Notifier<AuthState> {
     // Listen to Firebase auth changes
     _authStateChangesSubscription = _auth.authStateChanges().listen((User? user) {
       if (user == null) {
-        state = state.copyWith(user: null);
+        // Only update if state.user is not already null to avoid unnecessary rebuilds
+        if (state.user != null) state = state.copyWith(user: null);
       } else {
         // Fetch full profile from Firestore whenever Auth state changes
+        // Use Future.microtask to avoid build phase issues if needed, but not strictly required in listen
         _fetchUserProfile(user.uid);
       }
     });
@@ -54,10 +59,24 @@ class AuthController extends Notifier<AuthState> {
         // Correctly parse the data using the factory method
         final userData = doc.data()!;
         final userModel = UserModel.fromMap(userData, uid);
-        state = state.copyWith(user: userModel);
+        state = state.copyWith(user: userModel, error: null); // Clear error on success
       } else {
-        // If the user exists in Auth but not Firestore (rare edge case), handle gracefully
-        state = state.copyWith(error: "User profile incomplete. Please contact support.");
+        // If profile doesn't exist, try to create a default one based on Auth info
+        // This handles cases where signup failed partway or manual auth creation
+        final user = _auth.currentUser;
+        if (user != null && user.uid == uid) {
+             final newUser = UserModel(
+                uid: uid,
+                email: user.email ?? "",
+                name: user.displayName ?? "New User",
+                role: UserRole.parent, // Default to parent if unknown
+                profileImage: 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(user.displayName ?? "User")}&background=random',
+             );
+             await _firestore.collection('users').doc(uid).set(newUser.toMap());
+             state = state.copyWith(user: newUser, error: null);
+        } else {
+             state = state.copyWith(error: "User profile not found. Please contact support.");
+        }
       }
     } catch (e) {
       state = state.copyWith(error: "Failed to load profile: $e");
@@ -67,15 +86,18 @@ class AuthController extends Notifier<AuthState> {
   Future<void> login(String email, String password) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      await _auth.signInWithEmailAndPassword(email: email, password: password);
-      // The listener in build() will handle fetching the profile
+      final cred = await _auth.signInWithEmailAndPassword(email: email, password: password);
+      // Wait for the user profile to be fetched before clearing loading state
+      if (cred.user != null) {
+        await _fetchUserProfile(cred.user!.uid);
+      }
     } on FirebaseAuthException catch (e) {
       state = state.copyWith(isLoading: false, error: _mapFirebaseError(e));
     } catch (e) {
       state = state.copyWith(isLoading: false, error: "An unexpected error occurred");
     } finally {
-      // Create a copy with isLoading: false without modifying other fields
-      // We don't want to clear the user if the listener already set it
+      // Only clear loading if we didn't encouter an error (handled above)
+      // and if the state is still loading (i.e. successful fetch)
       if (state.isLoading) {
          state = state.copyWith(isLoading: false);
       }
@@ -117,16 +139,18 @@ class AuthController extends Notifier<AuthState> {
       // 4. Save to Firestore
       await _firestore.collection('users').doc(uid).set(newUser.toMap());
 
-      // 5. Send Verification Email
+      // 5. Manually update state to resolve race condition with auth listener
+      state = state.copyWith(user: newUser, isLoading: false);
+
+      // 6. Send Verification Email
       await user.sendEmailVerification();
-      
-      // Note: The listener will fire and fetch the profile we just saved.
     
     } on FirebaseAuthException catch (e) {
       state = state.copyWith(isLoading: false, error: _mapFirebaseError(e));
     } catch (e) {
       state = state.copyWith(isLoading: false, error: "Signup Failed: $e");
     } finally {
+       // Only update if still loading, to prevent overwriting error states or manually set completion states
        if (state.isLoading) {
          state = state.copyWith(isLoading: false);
       }
