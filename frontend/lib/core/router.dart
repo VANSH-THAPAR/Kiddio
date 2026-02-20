@@ -1,45 +1,22 @@
-import 'package:google_fonts/google_fonts.dart'; // import dependencies correctly
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/features/auth/presentation/login_screen.dart';
+import 'package:frontend/features/auth/presentation/signup_screen.dart'; // Import signup screen
 import 'package:frontend/features/navigation/main_scaffold.dart';
 import 'package:frontend/features/auth/providers/auth_controller.dart';
+import 'package:frontend/features/profile/presentation/profile_screen.dart'; // Import Profile Screen
 import '../features/dashboard/presentation/dashboard_screen.dart';
+import '../features/bookings/presentation/bookings_screen.dart'; 
+import '../features/chat/presentation/chat_list_screen.dart';
+import '../features/chat/presentation/chat_screen.dart';
+import '../features/auth/models/user_model.dart';
 
 // Placeholder screens for Shell
-class BookingsScreen extends StatelessWidget {
-  const BookingsScreen({super.key});
-  @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text("My Bookings")), body: const Center(child: Text("Bookings Content")));
-}
 
-class ChatScreen extends StatelessWidget {
-  const ChatScreen({super.key});
-  @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text("Messages")), body: const Center(child: Text("Chat Content")));
-}
 
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Consumer(builder: (context, ref, child) {
-       return Scaffold(
-        appBar: AppBar(title: const Text("Profile")), 
-        body: Center(
-          child: ElevatedButton(
-            onPressed: () => ref.read(authControllerProvider.notifier).logout(),
-            child: const Text("Sign Out"),
-          ),
-        ),
-      );
-    });
-  } 
-}
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
-final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final routerProvider = Provider<GoRouter>((ref) {
   // Use a listenable to refresh the router on auth state changes
@@ -56,26 +33,21 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
   );
 
-  final authState = ref.read(authControllerProvider); // Initial state
-
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/',
-    refreshListenable: authNotifier, // This triggers a refresh on auth change
+    refreshListenable: authNotifier, 
     redirect: (context, state) {
-      // READ the current state from the provider directly
       final currentAuth = ref.read(authControllerProvider);
       final isLoggedIn = currentAuth.user != null;
       final isLoggingIn = state.uri.toString() == '/auth';
-
-      // Log router state transitions for debugging
-      // debugPrint("Router Redirect: LoggedIn=$isLoggedIn, Path=${state.uri}, User=${currentAuth.user?.email}");
+      final isSigningUp = state.uri.toString() == '/signup';
 
       if (!isLoggedIn) {
-        return isLoggingIn ? null : '/auth';
+        return (isLoggingIn || isSigningUp) ? null : '/auth';
       }
 
-      if (isLoggingIn) {
+      if (isLoggingIn || isSigningUp) {
         return '/';
       }
 
@@ -85,6 +57,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/auth',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/signup',
+        builder: (context, state) => const SignupScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
@@ -111,7 +87,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/chat',
-                builder: (context, state) => const ChatScreen(),
+                builder: (context, state) => const ChatListScreen(),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) {
+                      final otherUser = state.extra as UserModel;
+                      return ChatScreen(otherUser: otherUser);
+                    },
+                  ),
+                ],
               ),
             ],
           ),

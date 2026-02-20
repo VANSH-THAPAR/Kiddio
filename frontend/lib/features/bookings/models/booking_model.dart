@@ -1,66 +1,94 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../auth/models/user_model.dart';
 
 enum BookingStatus { pending, confirmed, completed, cancelled }
 
 class BookingModel {
   final String id;
   final String parentId;
+  final String? parentName;
   final String sitterId;
-  final String sitterName; // Denormalized for easy display
-  final String parentName; // Denormalized for easy display
+  final String? sitterName;
+  final BookingStatus status;
   final DateTime startTime;
   final DateTime endTime;
   final double totalPrice;
-  final BookingStatus status;
+  final String? notes; // Added notes
   final DateTime createdAt;
+  
+  // Transient fields for UI (not stored in Firestore directly, but populated)
+  final UserModel? sitter;
+  final UserModel? parent;
 
   const BookingModel({
     required this.id,
     required this.parentId,
+    this.parentName,
     required this.sitterId,
-    required this.sitterName,
-    required this.parentName,
+    this.sitterName,
+    required this.status,
     required this.startTime,
     required this.endTime,
     required this.totalPrice,
-    required this.status,
+    this.notes,
     required this.createdAt,
+    this.sitter,
+    this.parent,
   });
-
-  // Helper to get duration in hours
-  double get durationInHours {
-    return endTime.difference(startTime).inMinutes / 60.0;
-  }
 
   factory BookingModel.fromMap(Map<String, dynamic> map, String id) {
     return BookingModel(
       id: id,
       parentId: map['parentId'] ?? '',
+      parentName: map['parentName'],
       sitterId: map['sitterId'] ?? '',
-      sitterName: map['sitterName'] ?? 'Unknown Sitter',
-      parentName: map['parentName'] ?? 'Unknown Parent',
+      sitterName: map['sitterName'],
+      status: BookingStatus.values.firstWhere(
+          (e) => e.toString() == 'BookingStatus.${map['status']}',
+          orElse: () => BookingStatus.pending),
       startTime: (map['startTime'] as Timestamp).toDate(),
       endTime: (map['endTime'] as Timestamp).toDate(),
-      totalPrice: map['totalPrice']?.toDouble() ?? 0.0,
-      status: BookingStatus.values.firstWhere(
-        (e) => e.toString().split('.').last == (map['status'] ?? 'pending'),
-        orElse: () => BookingStatus.pending,
-      ),
+      totalPrice: (map['totalPrice'] ?? 0.0).toDouble(),
+      notes: map['notes'],
       createdAt: (map['createdAt'] as Timestamp).toDate(),
+      // Sitter/Parent populated separately
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
       'parentId': parentId,
+      'parentName': parentName,
       'sitterId': sitterId,
       'sitterName': sitterName,
-      'parentName': parentName,
+      'status': status.toString().split('.').last,
       'startTime': Timestamp.fromDate(startTime),
       'endTime': Timestamp.fromDate(endTime),
       'totalPrice': totalPrice,
-      'status': status.toString().split('.').last,
+      'notes': notes,
       'createdAt': Timestamp.fromDate(createdAt),
     };
+  }
+  
+  BookingModel copyWith({
+    UserModel? sitter,
+    UserModel? parent,
+    BookingStatus? status,
+  }) {
+    return BookingModel(
+      id: id,
+      parentId: parentId,
+      parentName: parentName,
+      sitterId: sitterId,
+      sitterName: sitterName,
+      status: status ?? this.status,
+      startTime: startTime,
+      endTime: endTime,
+      totalPrice: totalPrice,
+      notes: notes,
+      createdAt: createdAt,
+      sitter: sitter ?? this.sitter,
+      parent: parent ?? this.parent,
+    );
   }
 }

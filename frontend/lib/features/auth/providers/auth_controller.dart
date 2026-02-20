@@ -12,14 +12,11 @@ class AuthState {
 
   const AuthState({this.isLoading = false, this.user, this.error});
 
-  AuthState copyWith({bool? isLoading, UserModel? user, String? error}) {
-    // If setting new user (non-null), clear error. If user is null, keep/set error.
-    final newError = (user != null) ? null : (error ?? this.error);
-    
+  AuthState copyWith({bool? isLoading, UserModel? user, String? error, bool clearError = false}) {
     return AuthState(
       isLoading: isLoading ?? this.isLoading,
       user: user ?? this.user,
-      error: error, // Allow explicit error set
+      error: clearError ? null : (error ?? this.error),
     );
   }
 }
@@ -59,10 +56,33 @@ class AuthController extends Notifier<AuthState> {
         // Correctly parse the data using the factory method
         final userData = doc.data()!;
         final userModel = UserModel.fromMap(userData, uid);
-        state = state.copyWith(user: userModel, error: null); // Clear error on success
+        
+        // Only update state if user model is different (to avoid unnecessary rebuilds or overwrites)
+        // Or blindly update?
+        // Let's check if the current local state is "loading" or empty.
+        // If we are in the middle of signup, we might have set the local state manually.
+        // But signup sets state AFTER firestore write.
+        
+        state = state.copyWith(user: userModel, clearError: true); // Clear error on success
       } else {
-        // If profile doesn't exist, try to create a default one based on Auth info
-        // This handles cases where signup failed partway or manual auth creation
+        // Doc doesn't exist yet.
+        // If this is triggered by auth state change during signup, we should NOT create default user immediately
+        // as signup process is about to write the correct data.
+        // How to distinguish?
+        // We can check if state.isLoading is true?
+        // If signup sets isLoading=true.
+        
+        if (state.isLoading) {
+           // Probably signup in progress, let signup handle the user creation and state update.
+           // Do nothing.
+           return;
+        }
+
+        // If not loading, try to create a default one based on Auth info
+        /* 
+        // Logic commented out to prevent race condition during signup. 
+        // Only enable if you support external auth providers (Google, etc.) that don't go through our signup flow.
+        
         final user = _auth.currentUser;
         if (user != null && user.uid == uid) {
              final newUser = UserModel(
@@ -77,6 +97,11 @@ class AuthController extends Notifier<AuthState> {
         } else {
              state = state.copyWith(error: "User profile not found. Please contact support.");
         }
+        */
+        // Instead, just set error or wait.
+        // Setting error might redirect to login if we treat error as logged out? No.
+        // But user is authenticated.
+        // Let's just wait.
       }
     } catch (e) {
       state = state.copyWith(error: "Failed to load profile: $e");
@@ -84,7 +109,7 @@ class AuthController extends Notifier<AuthState> {
   }
 
   Future<void> login(String email, String password) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true, clearError: true);
     try {
       final cred = await _auth.signInWithEmailAndPassword(email: email, password: password);
       // Wait for the user profile to be fetched before clearing loading state
@@ -104,8 +129,16 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
-  Future<void> signup(String name, String email, String password, UserRole role) async {
-    state = state.copyWith(isLoading: true, error: null);
+  Future<void> signup({
+    required String name,
+    required String email,
+    required String password,
+    required UserRole role,
+    double? hourlyRate,
+    String? bio,
+    int? yearsOfExperience,
+  }) async {
+    state = state.copyWith(isLoading: true, clearError: true);
     try {
       // 1. Create User in Firebase Auth
       UserCredential cred = await _auth.createUserWithEmailAndPassword(
@@ -127,20 +160,25 @@ class AuthController extends Notifier<AuthState> {
         name: name,
         profileImage: 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(name)}&background=random',
         role: role,
-        // Default empty values for Sitter fields
-        bio: role == UserRole.sitter ? "Hi! I'm new here." : null,
-        hourlyRate: role == UserRole.sitter ? 15.0 : null,
-        rating: role == UserRole.sitter ? 0.0 : null,
-        reviewCount: role == UserRole.sitter ? 0 : null,
-        certifications: role == UserRole.sitter ? <String>[] : null,
-        skills: role == UserRole.sitter ? <String>[] : null,
+        // Sitter specific data
+        hourlyRate: role == UserRole.sitter ? hourlyRate : null,
+        bio: role == UserRole.sitter ? bio : null,
+        yearsOfExperience: role == UserRole.sitter ? yearsOfExperience : null,
+        isVerified: false,
+        reviewCount: 0,
+        rating: 0.0,
       );
 
       // 4. Save to Firestore
       await _firestore.collection('users').doc(uid).set(newUser.toMap());
 
-      // 5. Manually update state to resolve race condition with auth listener
-      state = state.copyWith(user: newUser, isLoading: false);
+      // 5. Update Local State
+      state = state.copyWith(isLoading: false, user: newUser, clearError: true);
+
+      // Force a re-fetch after signup to ensure consistency with Firestore
+      // _fetchUserProfile(uid); 
+      // Actually, since we just wrote it, local state is freshest. 
+      // But maybe good to verify?
 
       // 6. Send Verification Email
       await user.sendEmailVerification();
@@ -154,6 +192,47 @@ class AuthController extends Notifier<AuthState> {
        if (state.isLoading) {
          state = state.copyWith(isLoading: false);
       }
+    }
+  }
+
+  Future<void> updateProfile({
+    String? name,
+    String? profileImage,
+    String? bio,
+    double? hourlyRate,
+    int? yearsOfExperience,
+    String? address,
+    double? latitude,
+    double? longitude,
+  }) async {
+    final currentUser = state.user;
+    if (currentUser == null) return;
+
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final updatedUser = currentUser.copyWith(
+        name: name,
+        profileImage: profileImage,
+        bio: bio,
+        hourlyRate: hourlyRate,
+        yearsOfExperience: yearsOfExperience,
+        address: address,
+        latitude: latitude,
+        longitude: longitude,
+      );
+
+      // 1. Update Firestore
+      await _firestore.collection('users').doc(updatedUser.uid).update(updatedUser.toMap());
+
+      // 2. Update Firebase Auth Display Name if needed
+      if (name != null) {
+        await _auth.currentUser?.updateDisplayName(name);
+      }
+
+      // 3. Update Local State
+      state = state.copyWith(user: updatedUser, isLoading: false);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: "Failed to update profile: $e");
     }
   }
 

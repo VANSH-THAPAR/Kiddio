@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../core/theme.dart';
 import '../providers/auth_controller.dart';
-import '../models/user_model.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -18,16 +17,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _nameController = TextEditingController();
   
-  bool _isLogin = true;
-  UserRole _selectedRole = UserRole.parent;
-
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _nameController.dispose();
     super.dispose();
   }
 
@@ -35,33 +29,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (_formKey.currentState!.validate()) {
       final authNotifier = ref.read(authControllerProvider.notifier);
       
-      if (_isLogin) {
-        // Login logic
-        await authNotifier.login(
-          _emailController.text.trim(), 
-          _passwordController.text.trim(),
-        );
-      } else {
-        // Signup logic
-        await authNotifier.signup(
-          _nameController.text.trim(),
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-          _selectedRole,
-        );
-      }
+      await authNotifier.login(
+        _emailController.text.trim(), 
+        _passwordController.text.trim(),
+      );
       
-      // Force navigation to dashboard after successful login
       if (mounted) {
          final currentState = ref.read(authControllerProvider);
          if (currentState.user != null) {
            context.go('/');
-         } else if (currentState.error == null) {
-           // If user is null but no error, re-fetch or wait (should stick to loading)
-           // But since loading is false...
-           ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Login successful, but profile syncing..."))
-           );
          }
       }
     }
@@ -91,7 +67,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                _isLogin ? 'Welcome Back!' : 'Create an Account',
+                'Welcome Back!',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w600,
@@ -104,18 +80,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    if (!_isLogin) ...[
-                      TextFormField(
-                        controller: _nameController,
-                        decoration: const InputDecoration(
-                          hintText: 'Full Name',
-                          prefixIcon: Icon(Iconsax.user),
-                        ),
-                        validator: (value) => value!.isEmpty ? 'Please enter your name' : null,
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-
                     TextFormField(
                       controller: _emailController,
                       decoration: const InputDecoration(
@@ -135,32 +99,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       validator: (value) => value!.length < 6 ? 'Password too short' : null,
                     ),
-                    
-                    if (!_isLogin) ...[
-                      const SizedBox(height: 24),
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.grey.shade200),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(child: _RoleButton(
-                              label: 'Parent',
-                              selected: _selectedRole == UserRole.parent,
-                              onTap: () => setState(() => _selectedRole = UserRole.parent),
-                            )),
-                            Expanded(child: _RoleButton(
-                              label: 'Sitter',
-                              selected: _selectedRole == UserRole.sitter,
-                              onTap: () => setState(() => _selectedRole = UserRole.sitter),
-                            )),
-                          ],
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -185,26 +123,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       width: 20, 
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
                     )
-                  : Text(_isLogin ? 'Log In' : 'Sign Up'),
+                  : const Text('Log In'),
               ),
 
               const SizedBox(height: 24),
               
               TextButton(
-                onPressed: () {
-                  setState(() {
-                    _isLogin = !_isLogin;
-                    _formKey.currentState?.reset();
-                  });
-                },
+                onPressed: () => context.go('/signup'),
                 child: RichText(
-                  text: TextSpan(
-                    text: _isLogin ? "Don't have an account? " : "Already have an account? ",
-                    style: const TextStyle(color: AppTheme.softText),
+                  text: const TextSpan(
+                    text: "Don't have an account? ",
+                    style: TextStyle(color: AppTheme.softText),
                     children: [
                       TextSpan(
-                        text: _isLogin ? 'Sign Up' : 'Log In',
-                        style: const TextStyle(
+                        text: 'Sign Up',
+                        style: TextStyle(
                           color: AppTheme.primaryColor, 
                           fontWeight: FontWeight.bold
                         ),
@@ -214,40 +147,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RoleButton extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _RoleButton({
-    required this.label, 
-    required this.selected, 
-    required this.onTap
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: selected ? AppTheme.primaryColor.withOpacity(0.1) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? AppTheme.primaryColor : AppTheme.softText,
-            fontWeight: FontWeight.w600,
           ),
         ),
       ),

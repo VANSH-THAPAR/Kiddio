@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../auth/models/user_model.dart'; // Make sure this path is correct relative to your file structure
+import 'package:geolocator/geolocator.dart';
+import '../../auth/models/user_model.dart'; 
+import '../../auth/providers/auth_controller.dart'; // Import user provider
 
 final sittersProvider = StreamProvider<List<UserModel>>((ref) {
   return FirebaseFirestore.instance
@@ -25,3 +27,31 @@ final sittersProvider = StreamProvider<List<UserModel>>((ref) {
     }).cast<UserModel>().toList(); // Cast to ensure correct list type
   });
 });
+
+final nearbySittersProvider = Provider<AsyncValue<List<UserModel>>>((ref) {
+  final sittersAsync = ref.watch(sittersProvider);
+  final authState = ref.watch(authControllerProvider);
+  final user = authState.user;
+
+  return sittersAsync.whenData((sitters) {
+    if (user?.latitude == null || user?.longitude == null) {
+      return sitters;
+    }
+
+    final sortedSitters = List<UserModel>.from(sitters);
+    sortedSitters.sort((a, b) {
+      if (a.latitude == null || a.longitude == null) return 1;
+      if (b.latitude == null || b.longitude == null) return -1;
+
+      final distA = Geolocator.distanceBetween(
+          user!.latitude!, user.longitude!, a.latitude!, a.longitude!);
+      final distB = Geolocator.distanceBetween(
+          user.latitude!, user.longitude!, b.latitude!, b.longitude!);
+
+      return distA.compareTo(distB);
+    });
+
+    return sortedSitters;
+  });
+});
+
