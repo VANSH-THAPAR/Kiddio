@@ -4,7 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart'; // Add Geolocator
 import 'package:image_picker/image_picker.dart'; // Add Image Picker
 import 'dart:io';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloudinary_public/cloudinary_public.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:path/path.dart' as path;
 import '../../../core/theme.dart';
 import '../../auth/models/user_model.dart';
@@ -41,17 +42,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
       setState(() => _isUploadingImage = true);
 
-      // Upload to Firebase Storage
-      final user = ref.read(authControllerProvider).user;
-      if (user == null) return;
-
-      final file = File(pickedFile.path);
-      final String fileName = 'profile_${user.uid}_${DateTime.now().millisecondsSinceEpoch}${path.extension(pickedFile.path)}';
-      final Reference storageRef = FirebaseStorage.instance.ref().child('users/${user.uid}/$fileName');
+      // Upload to Cloudinary
+      String cloudName = '';
+      String uploadPreset = '';
       
-      final UploadTask uploadTask = storageRef.putFile(file);
-      final TaskSnapshot snapshot = await uploadTask;
-      final String downloadUrl = await snapshot.ref.getDownloadURL();
+      try {
+        cloudName = dotenv.env['CLOUDINARY_CLOUD_NAME'] ?? '';
+        uploadPreset = dotenv.env['CLOUDINARY_UPLOAD_PRESET'] ?? '';
+      } catch (e) {
+        throw Exception("Failed to load environment variables. Please restart the app.");
+      }
+      
+      if (cloudName.isEmpty || uploadPreset.isEmpty) {
+        throw Exception("Cloudinary configuration missing in .env file");
+      }
+      
+      final cloudinary = CloudinaryPublic(cloudName, uploadPreset, cache: false);
+      CloudinaryResponse response = await cloudinary.uploadFile(
+        CloudinaryFile.fromFile(pickedFile.path, resourceType: CloudinaryResourceType.Image),
+      );
+      
+      final String downloadUrl = response.secureUrl;
 
       if (mounted) {
         setState(() {
@@ -186,9 +197,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           latitude: _latitude,
           longitude: _longitude,
         );
+        setState(() => _isEditing = false); // Only toggle if valid
       }
+    } else {
+      setState(() => _isEditing = true);
     }
-    setState(() => _isEditing = !_isEditing);
   }
 
   @override

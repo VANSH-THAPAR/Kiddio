@@ -15,13 +15,15 @@ final sittersProvider = StreamProvider<List<UserModel>>((ref) {
         // Parse the document data to a UserModel
         return UserModel.fromMap(doc.data(), doc.id);
       } catch (e) {
-        // Fallback or skip invalid documents
+        // Fallback or skip invalid documents but try to keep name/email if possible
+        final data = doc.data();
         return UserModel(
           uid: doc.id,
-          email: '',
-          name: 'Unknown Sitter',
-          profileImage: '', // Required parameter
+          email: data['email'] as String? ?? '',
+          name: data['name'] as String? ?? 'Unknown Sitter',
+          profileImage: data['profileImage'] as String?, // Try to preserve image
           role: UserRole.sitter,
+          // Other fields might be issue so omit them in fallback
         );
       }
     }).cast<UserModel>().toList(); // Cast to ensure correct list type
