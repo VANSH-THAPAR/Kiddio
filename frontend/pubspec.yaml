@@ -49,6 +49,8 @@ dependencies:
   timeago: ^3.7.1
   cloudinary_public: ^0.23.1
   flutter_dotenv: ^6.0.0
+  shared_preferences: ^2.5.2
+  path: ^1.9.0
 
 dev_dependencies:
   flutter_test:

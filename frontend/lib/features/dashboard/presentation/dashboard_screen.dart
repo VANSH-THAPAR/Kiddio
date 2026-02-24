@@ -93,6 +93,8 @@ class SitterCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final distanceText = _getDistanceText();
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return GestureDetector(
       onTap: () {
@@ -103,18 +105,8 @@ class SitterCard extends StatelessWidget {
           ),
         );
       },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+      child: Card(
+        // CardTheme handles color, shape, margin
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -133,7 +125,7 @@ class SitterCard extends StatelessWidget {
                   errorBuilder: (context, error, stackTrace) => Container(
                     width: 80,
                     height: 80,
-                    color: Colors.grey[200],
+                    color: isDark ? Colors.grey[800] : Colors.grey[200],
                     child: const Icon(Iconsax.user),
                   ),
                 ),
@@ -163,7 +155,7 @@ class SitterCard extends StatelessWidget {
                             margin: const EdgeInsets.only(left: 8),
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: AppTheme.primaryColor.withOpacity(0.1),
+                              color: AppTheme.primaryColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
@@ -211,7 +203,7 @@ class SitterCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: Colors.grey[600],
+                          color: isDark ? Colors.grey[400] : Colors.grey[600],
                           fontSize: 12,
                         ),
                       ),
@@ -235,7 +227,7 @@ class SitterCard extends StatelessWidget {
                               textAlign: TextAlign.end,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: Colors.grey[500],
+                                color: isDark ? Colors.grey[500] : Colors.grey[500],
                                 fontSize: 12,
                               ),
                             ),

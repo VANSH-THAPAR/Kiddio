@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart'; // Add dotenv
 import 'core/router.dart';
 import 'core/theme.dart';
+import 'core/theme_provider.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -29,11 +30,14 @@ class KiddioApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Watch the router provider
     final router = ref.watch(routerProvider);
+    final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
       title: 'Kiddio',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeMode,
       routerConfig: router,
     );
   }

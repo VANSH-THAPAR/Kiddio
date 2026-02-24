@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart'; // Add Geolocator
 import 'package:image_picker/image_picker.dart'; // Add Image Picker
-import 'dart:io';
 import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:path/path.dart' as path;
 import '../../../core/theme.dart';
+import '../../../core/theme_provider.dart'; // Add theme provider
 import '../../auth/models/user_model.dart';
 import '../../auth/providers/auth_controller.dart';
 
@@ -207,6 +205,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
+    final themeMode = ref.watch(themeModeProvider); // Watch theme mode
     final user = authState.user;
 
     if (user == null) {
@@ -220,6 +219,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           IconButton(
             icon: Icon(_isEditing ? Icons.save : Icons.edit),
             onPressed: authState.isLoading ? null : _toggleEdit,
+          ),
+          IconButton(
+            icon: Icon(themeMode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode),
+            onPressed: () {
+              ref.read(themeModeProvider.notifier).toggleTheme();
+            },
           ),
           IconButton(
             icon: const Icon(Icons.logout),
@@ -252,9 +257,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                         if (_isEditing)
                           Container(
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).scaffoldBackgroundColor,
                               shape: BoxShape.circle,
+                              border: Border.all(color: Theme.of(context).dividerColor),
                             ),
                             child: IconButton(
                               icon: _isUploadingImage 
@@ -322,7 +328,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         padding: const EdgeInsets.only(top: 8.0),
                         child: Text(
                           "Location Set: $_latitude, $_longitude",
-                          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                          style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ),
                     const SizedBox(height: 16),
@@ -382,7 +388,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         padding: const EdgeInsets.only(top: 16.0),
                         child: Text(
                           "Note: Verification status cannot be edited manually.",
-                          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                          style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ),
                   ],
