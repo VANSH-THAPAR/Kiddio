@@ -204,7 +204,6 @@ class SitterCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: isDark ? Colors.grey[400] : Colors.grey[600],
-                          fontSize: 12,
                         ),
                       ),
                     const SizedBox(height: 8),

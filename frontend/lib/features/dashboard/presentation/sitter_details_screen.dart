@@ -101,6 +101,7 @@ class _SitterDetailsScreenState extends ConsumerState<SitterDetailsScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(authControllerProvider).user;
     final isParent = user?.role == UserRole.parent;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.sitter.name)),
@@ -151,9 +152,9 @@ class _SitterDetailsScreenState extends ConsumerState<SitterDetailsScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                 color: Colors.grey[50], 
+                 color: isDark ? const Color(0xFF1E1E1E) : Colors.grey[50], 
                  borderRadius: BorderRadius.circular(16),
-                 border: Border.all(color: Colors.grey[200]!)
+                 border: Border.all(color: isDark ? Colors.grey[800]! : Colors.grey[200]!)
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -161,34 +162,46 @@ class _SitterDetailsScreenState extends ConsumerState<SitterDetailsScreen> {
                   Text("Book a Session", style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 16),
                   ListTile(
-                    leading: const Icon(Iconsax.calendar),
+                    leading: Icon(Iconsax.calendar, color: isDark ? Colors.white70 : Colors.black87),
                     title: Text(_selectedDate == null 
                         ? "Select Date" 
                         : "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}"),
                     onTap: _pickDate,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    tileColor: Colors.white,
+                    tileColor: isDark ? Colors.grey[800] : Colors.white,
+                    titleTextStyle: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(
                         child: ListTile(
-                          leading: const Icon(Iconsax.clock),
+                          leading: Icon(Iconsax.clock, color: isDark ? Colors.white70 : Colors.black87),
                           title: Text(_startTime?.format(context) ?? "Start"),
                           onTap: () => _pickTime(true),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          tileColor: Colors.white,
+                          tileColor: isDark ? Colors.grey[800] : Colors.white,
+                          titleTextStyle: TextStyle(
+                            color: isDark ? Colors.white : Colors.black87,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: ListTile(
-                          leading: const Icon(Iconsax.clock),
+                          leading: Icon(Iconsax.clock, color: isDark ? Colors.white70 : Colors.black87),
                           title: Text(_endTime?.format(context) ?? "End"),
                           onTap: () => _pickTime(false),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          tileColor: Colors.white,
+                          tileColor: isDark ? Colors.grey[800] : Colors.white,
+                          titleTextStyle: TextStyle(
+                            color: isDark ? Colors.white : Colors.black87,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
@@ -198,7 +211,6 @@ class _SitterDetailsScreenState extends ConsumerState<SitterDetailsScreen> {
                     controller: _notesController,
                     decoration: const InputDecoration(
                       labelText: "Notes (optional)",
-                      border: OutlineInputBorder(),
                     ),
                     maxLines: 2,
                   ),
@@ -214,13 +226,16 @@ class _SitterDetailsScreenState extends ConsumerState<SitterDetailsScreen> {
               ),
             )
             else
-            const Center(
+            Center(
               child: Card(
                 child: Padding(
-                  padding: EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(16.0),
                   child: Text(
                     "Switch to a Parent account to book sessions with this sitter.",
-                    style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey),
+                    style: TextStyle(
+                      fontStyle: FontStyle.italic, 
+                      color: isDark ? Colors.grey[400] : Colors.grey[600]
+                    ),
                   ),
                 ),
               ),
