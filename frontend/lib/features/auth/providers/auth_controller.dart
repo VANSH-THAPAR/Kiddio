@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user_model.dart';
+import '../models/child_model.dart';
 import 'dart:async';
 
 // State for the AuthController
@@ -204,6 +205,7 @@ class AuthController extends Notifier<AuthState> {
     String? address,
     double? latitude,
     double? longitude,
+    List<ChildModel>? children,
   }) async {
     final currentUser = state.user;
     if (currentUser == null) return;
@@ -219,6 +221,7 @@ class AuthController extends Notifier<AuthState> {
         address: address,
         latitude: latitude,
         longitude: longitude,
+        children: children,
       );
 
       // 1. Update Firestore

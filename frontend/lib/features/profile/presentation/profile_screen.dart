@@ -4,9 +4,11 @@ import 'package:geolocator/geolocator.dart'; // Add Geolocator
 import 'package:image_picker/image_picker.dart'; // Add Image Picker
 import 'package:cloudinary_public/cloudinary_public.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:iconsax/iconsax.dart'; // Add Iconsax
 import '../../../core/theme.dart';
 import '../../../core/theme_provider.dart'; // Add theme provider
 import '../../auth/models/user_model.dart';
+import '../../auth/models/child_model.dart';
 import '../../auth/providers/auth_controller.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -24,6 +26,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   late TextEditingController _yearsController;
   late TextEditingController _addressController;
   late TextEditingController _profileImageController;
+  List<ChildModel> _children = [];
 
   bool _isEditing = false;
   double? _latitude;
@@ -92,6 +95,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _yearsController = TextEditingController(text: user?.yearsOfExperience?.toString() ?? '');
     _addressController = TextEditingController(text: user?.address ?? '');
     _profileImageController = TextEditingController(text: user?.profileImage ?? '');
+    _children = List.from(user?.children ?? []);
     _latitude = user?.latitude;
     _longitude = user?.longitude;
   }
@@ -178,6 +182,145 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
+  Future<void> _showChildDialog({ChildModel? childToEdit, int? index}) async {
+    final nameController = TextEditingController(text: childToEdit?.name ?? '');
+    DateTime selectedDate = childToEdit?.dob ?? DateTime.now();
+    String gender = childToEdit?.gender ?? 'Male'; // Default
+    final specialNeedsController = TextEditingController(text: childToEdit?.specialNeeds ?? '');
+    final allergiesController = TextEditingController(text: childToEdit?.allergies ?? '');
+    final notesController = TextEditingController(text: childToEdit?.notes ?? '');
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Icon(childToEdit == null ? Iconsax.add_circle : Iconsax.edit, color: AppTheme.primaryColor),
+              const SizedBox(width: 10),
+              Text(childToEdit == null ? "Add Child" : "Edit Details"),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: InputDecoration(
+                    labelText: "Name",
+                    prefixIcon: const Icon(Iconsax.user),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime.now(),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => selectedDate = picked);
+                    }
+                  },
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: "Date of Birth",
+                      prefixIcon: const Icon(Iconsax.calendar),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text(
+                      "${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: gender,
+                  decoration: InputDecoration(
+                    labelText: "Gender",
+                    prefixIcon: const Icon(Iconsax.profile_2user),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  items: ['Male', 'Female', 'Other']
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
+                  onChanged: (val) => setDialogState(() => gender = val!),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: specialNeedsController,
+                  decoration: InputDecoration(
+                    labelText: "Special Needs (Optional)",
+                    prefixIcon: const Icon(Iconsax.health),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: allergiesController,
+                  decoration: InputDecoration(
+                    labelText: "Allergies (Optional)",
+                    prefixIcon: const Icon(Iconsax.danger),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: notesController,
+                  decoration: InputDecoration(
+                    labelText: "Notes (Optional)",
+                    prefixIcon: const Icon(Iconsax.note),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (nameController.text.isEmpty) return;
+                
+                final newChild = ChildModel(
+                  name: nameController.text.trim(),
+                  dob: selectedDate,
+                  gender: gender,
+                  specialNeeds: specialNeedsController.text.trim(),
+                  allergies: allergiesController.text.trim(),
+                  notes: notesController.text.trim(),
+                );
+
+                setState(() {
+                  if (index != null) {
+                    _children[index] = newChild;
+                  } else {
+                    _children.add(newChild);
+                  }
+                });
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text("Save Child"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _toggleEdit() {
     if (_isEditing) {
       // Save changes
@@ -194,6 +337,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           profileImage: _profileImageController.text.trim(),
           latitude: _latitude,
           longitude: _longitude,
+          children: _children,
         );
         setState(() => _isEditing = false); // Only toggle if valid
       }
@@ -258,71 +402,110 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         if (_isEditing)
                           Container(
                             decoration: BoxDecoration(
-                              color: Theme.of(context).scaffoldBackgroundColor,
+                              color: Theme.of(context).primaryColor,
                               shape: BoxShape.circle,
-                              border: Border.all(color: Theme.of(context).dividerColor),
+                              border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 2),
                             ),
                             child: IconButton(
                               icon: _isUploadingImage 
-                                  ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)) 
-                                  : const Icon(Icons.camera_alt, color: AppTheme.primaryColor),
+                                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) 
+                                  : const Icon(Iconsax.camera, color: Colors.white, size: 20),
                               onPressed: _isUploadingImage ? null : _pickAndUploadImage,
                             ),
                           ),
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 32),
 
                     // Name
                     TextFormField(
                       controller: _nameController,
                       enabled: _isEditing,
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
                       decoration: const InputDecoration(
-                        labelText: 'Full Name',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person),
+                        border: InputBorder.none,
+                        hintText: "Enter Full Name",
+                        floatingLabelBehavior: FloatingLabelBehavior.never,
                       ),
                       validator: (value) => value!.isEmpty ? 'Name required' : null,
                     ),
-                    const SizedBox(height: 16),
-                    
-                    // Email (Read Only)
-                    TextFormField(
-                      initialValue: user.email,
-                      enabled: false,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.email),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Address
-                    TextFormField(
-                      controller: _addressController,
-                      enabled: _isEditing,
-                      decoration: const InputDecoration(
-                        labelText: 'Address',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.location_on),
-                      ),
-                    ),
-                    if (_isEditing)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
-                        child: ElevatedButton.icon(
-                          onPressed: _isLoadingLocation ? null : _getCurrentLocation,
-                          icon: _isLoadingLocation
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white))
-                              : const Icon(Icons.my_location),
-                          label: const Text("Update Location from GPS"),
+
+                    if (!_isEditing && user.role == UserRole.sitter) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          "Certified Babysitter",
+                          style: Theme.of(context).textTheme.labelMedium?.copyWith(color: AppTheme.primaryColor, fontWeight: FontWeight.bold),
                         ),
                       ),
+                    ],
+
+                    const SizedBox(height: 32),
+                    
+                    // Email (Read Only)
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Iconsax.sms),
+                      ),
+                      title: Text("Email", style: Theme.of(context).textTheme.bodySmall),
+                      subtitle: Text(user.email, style: Theme.of(context).textTheme.bodyLarge),
+                    ),
+                    const Divider(height: 1),
+                    
+                    // Address
+                    if (_isEditing) ...[
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _addressController,
+                        enabled: _isEditing,
+                        decoration: InputDecoration(
+                          labelText: 'Address',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          prefixIcon: const Icon(Iconsax.location),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: OutlinedButton.icon(
+                          onPressed: _isLoadingLocation ? null : _getCurrentLocation,
+                          icon: _isLoadingLocation
+                              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                              : const Icon(Iconsax.gps),
+                          label: const Text("Use Current Location"),
+                          style: OutlinedButton.styleFrom(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        leading: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Iconsax.location),
+                        ),
+                        title: Text("Address", style: Theme.of(context).textTheme.bodySmall),
+                        subtitle: Text(
+                          _addressController.text.isNotEmpty ? _addressController.text : "No address set",
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        ),
+                      ),
+                    ],
                     if (_latitude != null && _longitude != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 8.0),
@@ -333,37 +516,189 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                     const SizedBox(height: 16),
 
+                    // Parent Specifics (Children)
+                    if (user.role == UserRole.parent) ...[
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text("My Children", style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                          if (_isEditing)
+                            ElevatedButton.icon(
+                              onPressed: () => _showChildDialog(),
+                              icon: const Icon(Iconsax.add, size: 18),
+                              label: const Text("Add"),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      if (_children.isEmpty)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).cardColor,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Theme.of(context).dividerColor, style: BorderStyle.solid),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(Iconsax.profile_2user, size: 48, color: Theme.of(context).disabledColor),
+                              const SizedBox(height: 12),
+                              Text(
+                                "No children profiles added yet.",
+                                style: TextStyle(color: Theme.of(context).disabledColor),
+                              ),
+                              if (_isEditing)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 12.0),
+                                  child: TextButton(
+                                    onPressed: () => _showChildDialog(),
+                                    child: const Text("Add Child Profile"),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ..._children.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final child = entry.value;
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                          elevation: 2,
+                          shadowColor: Colors.black12,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: _isEditing ? () => _showChildDialog(childToEdit: child, index: index) : null,
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 28,
+                                    backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                    child: Text(
+                                      child.name.isNotEmpty ? child.name[0].toUpperCase() : "?",
+                                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          child.name,
+                                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Icon(child.gender == 'Female' ? Iconsax.woman : Iconsax.man, size: 14, color: Colors.grey),
+                                            const SizedBox(width: 4),
+                                            Text("${child.gender} • ${child.age} yrs", style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                                          ],
+                                        ),
+                                        if (child.specialNeeds != null && child.specialNeeds!.isNotEmpty)
+                                           Padding(
+                                             padding: const EdgeInsets.only(top: 6.0),
+                                             child: Container(
+                                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                               decoration: BoxDecoration(
+                                                 color: Colors.orange.withValues(alpha: 0.1),
+                                                 borderRadius: BorderRadius.circular(4),
+                                               ),
+                                               child: Text(
+                                                 "Needs: ${child.specialNeeds}",
+                                                 style: const TextStyle(color: Colors.deepOrange, fontSize: 11, fontWeight: FontWeight.w600),
+                                               ),
+                                             ),
+                                           ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (_isEditing)
+                                    IconButton(
+                                      icon: const Icon(Iconsax.trash, color: Colors.redAccent),
+                                      onPressed: () => setState(() => _children.removeAt(index)),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 8),
+                    ],
+
                     // Sitter Specifics
                     if (user.role == UserRole.sitter) ...[
-                      const Divider(),
-                      const SizedBox(height: 8),
-                      Text("Sitter Details", style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 32),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text("Professional Details", style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                      ),
                       const SizedBox(height: 16),
                       
                       Row(
                         children: [
                            Expanded(
-                             child: TextFormField(
-                               controller: _hourlyRateController,
-                               enabled: _isEditing,
-                               keyboardType: TextInputType.number,
-                               decoration: const InputDecoration(
-                                 labelText: 'Rate (\$/hr)',
-                                 border: OutlineInputBorder(),
-                                 prefixIcon: Icon(Icons.attach_money),
+                             child: Container(
+                               padding: const EdgeInsets.all(16),
+                               decoration: BoxDecoration(
+                                 color: Theme.of(context).cardColor,
+                                 borderRadius: BorderRadius.circular(16),
+                                 border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)),
+                                 boxShadow: [
+                                   BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
+                                 ],
+                               ),
+                               child: Column(
+                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                 children: [
+                                   Text("Hourly Rate", style: Theme.of(context).textTheme.bodySmall),
+                                   const SizedBox(height: 4),
+                                   _isEditing 
+                                   ? TextField(
+                                       controller: _hourlyRateController,
+                                       keyboardType: TextInputType.number,
+                                       decoration: const InputDecoration(isDense: true, prefixText: "\$"),
+                                     )
+                                   : Text("\$${_hourlyRateController.text}", style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
+                                 ],
                                ),
                              ),
                            ),
                            const SizedBox(width: 16),
                            Expanded(
-                             child: TextFormField(
-                               controller: _yearsController,
-                               enabled: _isEditing,
-                               keyboardType: TextInputType.number,
-                               decoration: const InputDecoration(
-                                 labelText: 'Years Exp.',
-                                 border: OutlineInputBorder(),
-                                 prefixIcon: Icon(Icons.history),
+                             child: Container(
+                               padding: const EdgeInsets.all(16),
+                               decoration: BoxDecoration(
+                                 color: Theme.of(context).cardColor,
+                                 borderRadius: BorderRadius.circular(16),
+                                 border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)),
+                                 boxShadow: [
+                                   BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
+                                 ],
+                               ),
+                               child: Column(
+                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                 children: [
+                                   Text("Experience", style: Theme.of(context).textTheme.bodySmall),
+                                   const SizedBox(height: 4),
+                                   _isEditing 
+                                   ? TextField(
+                                       controller: _yearsController,
+                                       keyboardType: TextInputType.number,
+                                       decoration: const InputDecoration(isDense: true, suffixText: "years"),
+                                     )
+                                   : Text("${_yearsController.text} Years", style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                                 ],
                                ),
                              ),
                            ),
@@ -371,15 +706,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                       const SizedBox(height: 16),
                       
-                      TextFormField(
-                         controller: _bioController,
-                         enabled: _isEditing,
-                         maxLines: 4,
-                         decoration: const InputDecoration(
-                           labelText: 'Bio',
-                           border: OutlineInputBorder(),
-                           alignLabelWithHint: true,
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text("Bio", style: TextStyle(fontWeight: FontWeight.w600)),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                         padding: const EdgeInsets.all(16),
+                         width: double.infinity,
+                         decoration: BoxDecoration(
+                           color: Theme.of(context).cardColor,
+                           borderRadius: BorderRadius.circular(16),
+                           border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.2)),
                          ),
+                         child: _isEditing
+                           ? TextField(
+                               controller: _bioController,
+                               maxLines: 4,
+                               decoration: const InputDecoration.collapsed(hintText: "Tell parents about yourself..."),
+                             )
+                           : Text(
+                               _bioController.text.isNotEmpty ? _bioController.text : "No bio provided.",
+                               style: Theme.of(context).textTheme.bodyMedium,
+                             ),
                       ),
                     ],
 

@@ -1,3 +1,5 @@
+import 'child_model.dart';
+
 enum UserRole { parent, sitter }
 
 class UserModel {
@@ -20,6 +22,9 @@ class UserModel {
   final List<String>? certifications; // e.g., ["CPR", "First Aid"]
   final List<String>? skills; // e.g., ["Toddlers", "Homework Help"]
 
+  // Parent specific fields
+  final List<ChildModel>? children;
+
   const UserModel({
     required this.uid,
     required this.email,
@@ -37,6 +42,7 @@ class UserModel {
     this.address,
     this.certifications,
     this.skills,
+    this.children,
   });
 
   UserModel copyWith({
@@ -56,6 +62,7 @@ class UserModel {
     String? address,
     List<String>? certifications,
     List<String>? skills,
+    List<ChildModel>? children,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -74,6 +81,7 @@ class UserModel {
       address: address ?? this.address,
       certifications: certifications ?? this.certifications,
       skills: skills ?? this.skills,
+      children: children ?? this.children,
     );
   }
 
@@ -98,6 +106,11 @@ class UserModel {
           ? List<String>.from(map['certifications'])
           : null,
       skills: map['skills'] != null ? List<String>.from(map['skills']) : null,
+      children: map['children'] != null
+          ? (map['children'] as List<dynamic>)
+              .map((item) => ChildModel.fromMap(item as Map<String, dynamic>))
+              .toList()
+          : null,
     );
   }
 
@@ -119,6 +132,7 @@ class UserModel {
       if (address != null) 'address': address,
       if (certifications != null) 'certifications': certifications,
       if (skills != null) 'skills': skills,
+      if (children != null) 'children': children!.map((child) => child.toMap()).toList(),
     };
   }
 }
