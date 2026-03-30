@@ -58,54 +58,12 @@ class AuthController extends Notifier<AuthState> {
         final userData = doc.data()!;
         final userModel = UserModel.fromMap(userData, uid);
         
-        // Only update state if user model is different (to avoid unnecessary rebuilds or overwrites)
-        // Or blindly update?
-        // Let's check if the current local state is "loading" or empty.
-        // If we are in the middle of signup, we might have set the local state manually.
-        // But signup sets state AFTER firestore write.
-        
         state = state.copyWith(user: userModel, clearError: true); // Clear error on success
-      } else {
-        // Doc doesn't exist yet.
-        // If this is triggered by auth state change during signup, we should NOT create default user immediately
-        // as signup process is about to write the correct data.
-        // How to distinguish?
-        // We can check if state.isLoading is true?
-        // If signup sets isLoading=true.
-        
-        if (state.isLoading) {
-           // Probably signup in progress, let signup handle the user creation and state update.
-           // Do nothing.
-           return;
-        }
-
-        // If not loading, try to create a default one based on Auth info
-        /* 
-        // Logic commented out to prevent race condition during signup. 
-        // Only enable if you support external auth providers (Google, etc.) that don't go through our signup flow.
-        
-        final user = _auth.currentUser;
-        if (user != null && user.uid == uid) {
-             final newUser = UserModel(
-                uid: uid,
-                email: user.email ?? "",
-                name: user.displayName ?? "New User",
-                role: UserRole.parent, // Default to parent if unknown
-                profileImage: 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(user.displayName ?? "User")}&background=random',
-             );
-             await _firestore.collection('users').doc(uid).set(newUser.toMap());
-             state = state.copyWith(user: newUser, error: null);
-        } else {
-             state = state.copyWith(error: "User profile not found. Please contact support.");
-        }
-        */
-        // Instead, just set error or wait.
-        // Setting error might redirect to login if we treat error as logged out? No.
-        // But user is authenticated.
-        // Let's just wait.
       }
     } catch (e) {
-      state = state.copyWith(error: "Failed to load profile: $e");
+      if (!state.isLoading) {
+        state = state.copyWith(error: "Failed to load profile: $e");
+      }
     }
   }
 
@@ -176,11 +134,6 @@ class AuthController extends Notifier<AuthState> {
       // 5. Update Local State
       state = state.copyWith(isLoading: false, user: newUser, clearError: true);
 
-      // Force a re-fetch after signup to ensure consistency with Firestore
-      // _fetchUserProfile(uid); 
-      // Actually, since we just wrote it, local state is freshest. 
-      // But maybe good to verify?
-
       // 6. Send Verification Email
       await user.sendEmailVerification();
     
@@ -188,11 +141,6 @@ class AuthController extends Notifier<AuthState> {
       state = state.copyWith(isLoading: false, error: _mapFirebaseError(e));
     } catch (e) {
       state = state.copyWith(isLoading: false, error: "Signup Failed: $e");
-    } finally {
-       // Only update if still loading, to prevent overwriting error states or manually set completion states
-       if (state.isLoading) {
-         state = state.copyWith(isLoading: false);
-      }
     }
   }
 

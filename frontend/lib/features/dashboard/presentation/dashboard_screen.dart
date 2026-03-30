@@ -20,7 +20,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   // Filter states
-  RangeValues _priceRange = const RangeValues(10, 100);
+  RangeValues _priceRange = const RangeValues(0, 100);
   double _minRating = 0;
   bool _verifiedOnly = false;
   int _yearsExperience = 0;
@@ -72,13 +72,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       TextButton(
                         onPressed: () {
                           setState(() {
-                            _priceRange = const RangeValues(10, 100);
+                            _priceRange = const RangeValues(0, 100);
                             _minRating = 0;
                             _verifiedOnly = false;
                             _yearsExperience = 0;
                           });
                           setStateSheet(() {
-                             _priceRange = const RangeValues(10, 100);
+                             _priceRange = const RangeValues(0, 100);
                              _minRating = 0;
                              _verifiedOnly = false;
                              _yearsExperience = 0;
@@ -111,7 +111,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                   RangeSlider(
                     values: _priceRange,
-                    min: 10,
+                    min: 0,
                     max: 100,
                     divisions: 18,
                     activeColor: AppTheme.primaryColor,
@@ -276,7 +276,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       }).toList();
     });
 
-    final hasActiveFilters = _minRating > 0 || _verifiedOnly || _yearsExperience > 0 || _priceRange.start > 10 || _priceRange.end < 100;
+    final hasActiveFilters = _minRating > 0 || _verifiedOnly || _yearsExperience > 0 || _priceRange.start > 0 || _priceRange.end < 100;
 
     return Scaffold(
       backgroundColor: isDark ? Colors.black : Colors.grey[50],
@@ -416,7 +416,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           onPressed: () {
                             setState(() {
                               _searchController.clear();
-                              _priceRange = const RangeValues(10, 100);
+                              _priceRange = const RangeValues(0, 100);
                               _minRating = 0;
                               _verifiedOnly = false;
                               _yearsExperience = 0;

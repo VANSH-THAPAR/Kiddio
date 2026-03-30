@@ -47,8 +47,12 @@ final nearbySittersProvider = Provider<AsyncValue<List<UserModel>>>((ref) {
 
     final sortedSitters = List<UserModel>.from(sitters);
     sortedSitters.sort((a, b) {
-      if (a.latitude == null || a.longitude == null) return 1;
-      if (b.latitude == null || b.longitude == null) return -1;
+      final aHasLoc = a.latitude != null && a.longitude != null;
+      final bHasLoc = b.latitude != null && b.longitude != null;
+
+      if (!aHasLoc && !bHasLoc) return 0;
+      if (!aHasLoc) return 1;
+      if (!bHasLoc) return -1;
 
       final distA = Geolocator.distanceBetween(
           user!.latitude!, user.longitude!, a.latitude!, a.longitude!);
