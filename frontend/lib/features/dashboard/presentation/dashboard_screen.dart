@@ -193,7 +193,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
                     ),
                     value: _verifiedOnly,
-                    activeColor: AppTheme.primaryColor,
+                    activeThumbColor: AppTheme.primaryColor,
                     onChanged: (value) {
                       setStateSheet(() => _verifiedOnly = value);
                       setState(() {});
@@ -646,7 +646,7 @@ class SitterCard extends StatelessWidget {
                                 Icon(Iconsax.star1, size: 14, color: Colors.amber[700]),
                                 const SizedBox(width: 4),
                                 Text(
-                                  "${sitter.rating!.toStringAsFixed(1)}",
+                                  sitter.rating!.toStringAsFixed(1),
                                   style: GoogleFonts.poppins(
                                     fontWeight: FontWeight.w600,
                                     fontSize: 12,

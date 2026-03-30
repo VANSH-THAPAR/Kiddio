@@ -241,7 +241,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: gender,
+                  initialValue: gender,
                   decoration: InputDecoration(
                     labelText: "Gender",
                     prefixIcon: const Icon(Iconsax.profile_2user),
@@ -397,7 +397,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 ? _profileImageController.text 
                                 : (user.profileImage ?? 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(user.name)}')
                           ),
-                          onBackgroundImageError: (_, __) {},
+                          onBackgroundImageError: (_, _) {},
                         ),
                         if (_isEditing)
                           Container(

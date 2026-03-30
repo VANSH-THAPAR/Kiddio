@@ -114,9 +114,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   });
                 },
                 style: ButtonStyle(
-                  backgroundColor: MaterialStateProperty.resolveWith<Color>(
-                    (Set<MaterialState> states) {
-                      if (states.contains(MaterialState.selected)) {
+                  backgroundColor: WidgetStateProperty.resolveWith<Color>(
+                    (Set<WidgetState> states) {
+                      if (states.contains(WidgetState.selected)) {
                         return AppTheme.primaryColor.withOpacity(0.2);
                       }
                       return Colors.transparent;

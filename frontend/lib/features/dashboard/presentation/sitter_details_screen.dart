@@ -43,8 +43,11 @@ class _SitterDetailsScreenState extends ConsumerState<SitterDetailsScreen> {
     );
     if (picked != null) {
       setState(() {
-        if (isStart) _startTime = picked;
-        else _endTime = picked;
+        if (isStart) {
+          _startTime = picked;
+        } else {
+          _endTime = picked;
+        }
       });
     }
   }

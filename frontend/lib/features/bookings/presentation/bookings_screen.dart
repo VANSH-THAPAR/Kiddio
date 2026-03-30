@@ -132,6 +132,5 @@ class BookingsScreen extends ConsumerWidget {
       case BookingStatus.cancelled: return Colors.red;
       case BookingStatus.completed: return Colors.blue;
     }
-    return Colors.grey;
   }
 }

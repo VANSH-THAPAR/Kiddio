@@ -5,6 +5,11 @@ import '../../auth/models/user_model.dart';
 import '../../auth/providers/auth_controller.dart'; // Import user provider
 
 final sittersProvider = StreamProvider<List<UserModel>>((ref) {
+  final authState = ref.watch(authControllerProvider);
+  if (authState.user == null) {
+    return const Stream.empty();
+  }
+  
   return FirebaseFirestore.instance
       .collection('users')
       .where('role', isEqualTo: 'sitter')
